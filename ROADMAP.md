@@ -18,7 +18,7 @@
 | ✅ | **Saul** | FastAPI skeleton app with health check endpoint | `GET /health` returns `{"status": "ok"}` |
 | ⬜ | **Sonia** | Deploy Supabase schema migration | All 4 tables created, RLS enabled on `complaints` |
 | ⬜ | **Sonia** | Create Supabase Storage bucket for PDFs | Bucket exists, backend service key has write access |
-| ⬜ | **Sonia** | Seed `known_systems.json` with ACS Severe Harm PRM entry | Entry has ≥2 citation URLs |
+| ✅ | **Sonia** | Seed `known_systems.json` with ACS Severe Harm PRM entry | Entry has ≥2 citation URLs |
 | ⬜ | **William** | Next.js app scaffolded, connected to API via env var | `npm run dev` starts without errors |
 
 ---

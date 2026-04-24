@@ -104,6 +104,8 @@ These match EEOC 80% rule (4/5ths rule) framing, adapted for over-representation
 | 4 | Grok free tier rate limits (requests/min, tokens/day) | Saul | Open |
 | 5 | Vercel domain for CORS allowlist (known after first deploy) | William | Open |
 | 6 | Railway service URL (known after first deploy) | Saul | Open |
+| 7 | Sonia: deploy migration + create storage bucket in Supabase | Sonia | Open — needs credentials |
+| 8 | William: push Next.js scaffold to `william-frontend-branch` | William | Open — branch exists, no code yet |
 
 ---
 
@@ -156,3 +158,6 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 | Date | Author | Note |
 |---|---|---|
 | 2026-04-24 | Beatrice | Initial NOTES.md created |
+| 2026-04-24 | Beatrice | PR #1 merged — `known_systems.json` seeded, NOTES blockers #2 and #3 resolved |
+| 2026-04-24 | Beatrice | PR #2 merged — CI fixed: mypy types, python-multipart CVEs, Gitleaks permissions |
+| 2026-04-24 | Beatrice | `develop` is clean and green; `william-frontend-branch` exists but has no code yet |
