@@ -41,4 +41,5 @@ async def fetch_one(query: str, *args: Any) -> dict[str, Any] | None:
 async def execute(query: str, *args: Any) -> str:
     pool = await get_pool()
     async with pool.acquire() as conn:
-        return await conn.execute(query, *args)
+        result: str = await conn.execute(query, *args)
+        return result

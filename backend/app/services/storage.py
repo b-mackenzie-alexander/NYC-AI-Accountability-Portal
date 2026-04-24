@@ -1,13 +1,13 @@
 import os
-from typing import BinaryIO
+from typing import Any, BinaryIO
 
 import boto3
 from botocore.config import Config
 
-_client = None
+_client: Any = None
 
 
-def get_client():
+def get_client() -> Any:
     global _client
     if _client is None:
         _client = boto3.client(
@@ -37,8 +37,9 @@ def upload_pdf(file_obj: BinaryIO, key: str, content_type: str = "application/pd
 
 def get_presigned_url(key: str, expires_in: int = 3600) -> str:
     """Generate a presigned URL for temporary read access to a stored PDF."""
-    return get_client().generate_presigned_url(
+    url: str = get_client().generate_presigned_url(
         "get_object",
         Params={"Bucket": BUCKET, "Key": key},
         ExpiresIn=expires_in,
     )
+    return url
