@@ -12,8 +12,9 @@ from app.main import app  # noqa: E402
 
 @pytest.mark.asyncio
 async def test_health_check():
-    with patch("app.services.database.get_pool", new_callable=AsyncMock), patch(
-        "app.services.database.close_pool", new_callable=AsyncMock
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
     ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/health")
@@ -23,8 +24,9 @@ async def test_health_check():
 
 @pytest.mark.asyncio
 async def test_cors_blocked_for_unknown_origin():
-    with patch("app.services.database.get_pool", new_callable=AsyncMock), patch(
-        "app.services.database.close_pool", new_callable=AsyncMock
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
     ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get(
