@@ -31,3 +31,7 @@ async def test_cors_blocked_for_unknown_origin():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.get("/health", headers={"Origin": "https://evil.example.com"})
     assert "access-control-allow-origin" not in response.headers
+
+
+
+
