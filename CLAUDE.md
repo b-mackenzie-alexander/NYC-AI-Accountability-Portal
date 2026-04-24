@@ -100,7 +100,8 @@ cd frontend && npm run test
 |---|---|
 | Backend | Python 3.11, FastAPI, pdfplumber, openai SDK (pointed at xAI Grok) |
 | Frontend | Next.js 14 App Router, TypeScript, Recharts, Tailwind CSS |
-| Database | Supabase (Postgres + Storage) |
+| Database | Railway Postgres — `asyncpg` client |
+| Storage | Cloudflare R2 — `boto3` S3-compatible client |
 | LLM | Grok API (xAI) — OpenAI-compatible, free tier |
 | Data | NYC Open Data via Socrata REST API |
 | Analysis | pandas, scipy |
