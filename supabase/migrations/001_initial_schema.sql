@@ -1,5 +1,9 @@
 -- Migration: 001_initial_schema
--- Run this once against your Supabase project via the SQL editor or CLI.
+-- Run this against your Railway Postgres instance.
+-- Connect via: psql $DATABASE_URL -f supabase/migrations/001_initial_schema.sql
+-- Or paste into any Postgres SQL client.
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 -- AI system disclosures extracted from agency PDFs
 CREATE TABLE IF NOT EXISTS ai_disclosures (

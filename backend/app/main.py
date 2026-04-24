@@ -16,7 +16,10 @@ limiter = Limiter(key_func=get_remote_address)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
+    from app.services.database import close_pool, get_pool
+    await get_pool()
     yield
+    await close_pool()
 
 
 app = FastAPI(

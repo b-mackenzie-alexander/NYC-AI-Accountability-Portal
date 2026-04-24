@@ -28,6 +28,18 @@
 **Frontend implication:** Show loading state; expect 3–8 second response time.
 
 ### ADR-005: Monorepo with `/backend` and `/frontend` subdirectories
+
+### ADR-006: Pivot from Supabase to Railway Postgres + Cloudflare R2
+**Decision:** Replace Supabase with Railway Postgres (database) and Cloudflare R2 (PDF storage).
+**Reason:** Hit Supabase free tier usage cap during the hackathon. Railway Postgres is already in the project's infrastructure; R2 has a generous free tier and an S3-compatible API.
+**Impact:**
+- `supabase` Python package replaced with `asyncpg` + `boto3`
+- Supabase JS client removed from frontend entirely — all data flows through FastAPI API
+- RLS policies unchanged — they are standard Postgres, not Supabase-specific
+- `DATABASE_URL` replaces `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` in backend env
+- `R2_*` vars replace storage bucket config
+- Frontend env simplified: only `API_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL` needed
+**How to apply:** Use `app.services.database` (asyncpg pool) for all DB access. Use `app.services.storage` (boto3 → R2) for PDF uploads. Never import the `supabase` package.
 **Decision:** Single GitHub repo, two top-level directories.
 **Reason:** Simplifies CI (path-based triggers), keeps team in one place, easier cross-referencing.
 
@@ -161,3 +173,4 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 | 2026-04-24 | Beatrice | PR #1 merged — `known_systems.json` seeded, NOTES blockers #2 and #3 resolved |
 | 2026-04-24 | Beatrice | PR #2 merged — CI fixed: mypy types, python-multipart CVEs, Gitleaks permissions |
 | 2026-04-24 | Beatrice | `develop` is clean and green; `william-frontend-branch` exists but has no code yet |
+| 2026-04-24 | Beatrice | Pivoted from Supabase to Railway Postgres + Cloudflare R2 (ADR-006) — hit Supabase cap |
