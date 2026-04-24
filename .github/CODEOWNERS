@@ -1,0 +1,23 @@
+# CODEOWNERS
+# Each line: path pattern → required reviewers
+# Last matching pattern wins.
+
+# Default: Beatrice reviews everything not otherwise matched
+*                   @beatrice-at-pursuit
+
+# Backend — Saul primary, Beatrice secondary
+/backend/           @saul @beatrice-at-pursuit
+
+# Frontend — William primary, Beatrice secondary
+/frontend/          @william @beatrice-at-pursuit
+
+# Database schema — Sonia primary, Beatrice secondary
+/supabase/          @sonia @beatrice-at-pursuit
+
+# CI/CD and GitHub config — Beatrice only
+/.github/           @beatrice-at-pursuit
+
+# Root docs — any team member can review
+/PRD.md             @beatrice-at-pursuit @saul @william @sonia
+/ROADMAP.md         @beatrice-at-pursuit @saul @william @sonia
+/ARCHITECTURE.md    @beatrice-at-pursuit @saul @william @sonia
