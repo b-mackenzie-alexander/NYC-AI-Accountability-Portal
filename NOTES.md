@@ -28,6 +28,18 @@
 **Frontend implication:** Show loading state; expect 3–8 second response time.
 
 ### ADR-005: Monorepo with `/backend` and `/frontend` subdirectories
+
+### ADR-006: Pivot from Supabase to Railway Postgres + Cloudflare R2
+**Decision:** Replace Supabase with Railway Postgres (database) and Cloudflare R2 (PDF storage).
+**Reason:** Hit Supabase free tier usage cap during the hackathon. Railway Postgres is already in the project's infrastructure; R2 has a generous free tier and an S3-compatible API.
+**Impact:**
+- `supabase` Python package replaced with `asyncpg` + `boto3`
+- Supabase JS client removed from frontend entirely — all data flows through FastAPI API
+- RLS policies unchanged — they are standard Postgres, not Supabase-specific
+- `DATABASE_URL` replaces `SUPABASE_URL` + `SUPABASE_SERVICE_KEY` in backend env
+- `R2_*` vars replace storage bucket config
+- Frontend env simplified: only `API_BASE_URL` and `NEXT_PUBLIC_API_BASE_URL` needed
+**How to apply:** Use `app.services.database` (asyncpg pool) for all DB access. Use `app.services.storage` (boto3 → R2) for PDF uploads. Never import the `supabase` package.
 **Decision:** Single GitHub repo, two top-level directories.
 **Reason:** Simplifies CI (path-based triggers), keeps team in one place, easier cross-referencing.
 
@@ -50,16 +62,16 @@ Visit `data.cityofnewyork.us` and search "ACS" to verify current IDs.
 **No API key required** for public datasets. Add `$$app_token` header if rate limited.
 
 ### ACS LL35 PDF Source
-Local Law 35 of 2022 annual reports are published at nyc.gov. Find the most recent ACS submission.
-URL to document: [TO BE FILLED IN — Sonia to locate and add]
+✅ **Resolved** — Most recent report published March 2026:
+https://www.nyc.gov/assets/oti/downloads/pdf/reports/LL35%20Report%202025%20-%20Final%20-%202026-03-27.pdf
 
 ### Severe Harm Predictive Risk Model — Citation Sources
-These go into `known_systems.json` as the `source_urls` for the ACS PRM entry:
-- ACLU report on ACS predictive tools: [TO BE FILLED IN]
-- Academic paper (Center for Court Innovation or similar): [TO BE FILLED IN]
-- NYC Administration for Children's Families documentation: [TO BE FILLED IN]
-
-Minimum 2 URLs required before the disclosure gap signal has credibility.
+✅ **Resolved** — 5 verified URLs added to `backend/app/data/known_systems.json`:
+1. https://themarkup.org/investigations/2025/05/20/the-nyc-algorithm-deciding-which-families-are-under-watch-for-child-abuse
+2. https://aspe.hhs.gov/reports/child-welfare-predictive-risk-models
+3. https://www.aclu.org/news/womens-rights/family-surveillance-by-algorithm-the-rapidly-spreading-tools-few-have-heard-of
+4. https://mcsilver.nyu.edu/predictive-risk-tools-in-child-welfare-practice/
+5. https://www.nyc.gov/assets/oti/downloads/pdf/reports/2024-algorithmic-tools-report.pdf
 
 ### Disparity Ratio Thresholds (for reference)
 ```
@@ -99,11 +111,13 @@ These match EEOC 80% rule (4/5ths rule) framing, adapted for over-representation
 | # | Question | Owner | Status |
 |---|---|---|---|
 | 1 | Exact Socrata dataset IDs for ACS foster care data | Sonia | Open |
-| 2 | URL for most recent ACS LL35 annual report PDF | Sonia | Open |
-| 3 | Citation URLs for Severe Harm PRM in `known_systems.json` | Sonia | Open |
+| 2 | URL for most recent ACS LL35 annual report PDF | Sonia | ✅ Resolved — see Reference Links |
+| 3 | Citation URLs for Severe Harm PRM in `known_systems.json` | Sonia | ✅ Resolved — 5 URLs in `known_systems.json` |
 | 4 | Grok free tier rate limits (requests/min, tokens/day) | Saul | Open |
 | 5 | Vercel domain for CORS allowlist (known after first deploy) | William | Open |
 | 6 | Railway service URL (known after first deploy) | Saul | Open |
+| 7 | Sonia: deploy migration + create storage bucket in Supabase | Sonia | Open — needs credentials |
+| 8 | William: push Next.js scaffold to `william-frontend-branch` | William | Open — branch exists, no code yet |
 
 ---
 
@@ -156,3 +170,7 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 | Date | Author | Note |
 |---|---|---|
 | 2026-04-24 | Beatrice | Initial NOTES.md created |
+| 2026-04-24 | Beatrice | PR #1 merged — `known_systems.json` seeded, NOTES blockers #2 and #3 resolved |
+| 2026-04-24 | Beatrice | PR #2 merged — CI fixed: mypy types, python-multipart CVEs, Gitleaks permissions |
+| 2026-04-24 | Beatrice | `develop` is clean and green; `william-frontend-branch` exists but has no code yet |
+| 2026-04-24 | Beatrice | Pivoted from Supabase to Railway Postgres + Cloudflare R2 (ADR-006) — hit Supabase cap |

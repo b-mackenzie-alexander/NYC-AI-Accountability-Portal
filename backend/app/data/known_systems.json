@@ -1,0 +1,14 @@
+[
+  {
+    "agency": "Administration for Children's Services",
+    "system_name": "Severe Harm Predictive Risk Model",
+    "description": "Machine learning model that scores families at the time of an abuse or neglect report to predict the likelihood of severe harm within 18 months. Score is visible to investigators before an investigation begins.",
+    "source_urls": [
+      "https://themarkup.org/investigations/2025/05/20/the-nyc-algorithm-deciding-which-families-are-under-watch-for-child-abuse",
+      "https://aspe.hhs.gov/reports/child-welfare-predictive-risk-models",
+      "https://www.aclu.org/news/womens-rights/family-surveillance-by-algorithm-the-rapidly-spreading-tools-few-have-heard-of",
+      "https://mcsilver.nyu.edu/predictive-risk-tools-in-child-welfare-practice/",
+      "https://www.nyc.gov/assets/oti/downloads/pdf/reports/2024-algorithmic-tools-report.pdf"
+    ]
+  }
+]

@@ -1,7 +1,96 @@
 # AGENTS.md
-## NYC AI Accountability Portal — Agentic Pipeline Documentation
+## NYC AI Accountability Portal
 
-This file documents the LLM-powered agentic workflows in the application. It covers the multi-step agent chain used for PDF extraction, the design rationale for each step, and how to extend or debug the pipeline.
+This file has two sections:
+
+1. **Coding Agent Guidelines** — instructions for AI coding agents (Claude Code, Cursor, Copilot, etc.) working on this codebase
+2. **Application Agent Pipeline** — documentation of the LLM-powered agents built into the app itself
+
+---
+
+# Part 1: Coding Agent Guidelines
+
+## Who Is Working on This Project
+
+Four humans, each potentially using an AI coding agent:
+
+| Person | Role | Branch prefix | Owns |
+|---|---|---|---|
+| Beatrice | CI/CD, Security, Testing | `feat/beatrice/` | `.github/`, `backend/tests/` |
+| Saul | Python Backend | `feat/saul/` | `backend/app/` |
+| Sonia | Supabase, Data | `feat/sonia/` | `supabase/`, `backend/app/data/` |
+| William | Next.js Frontend | `feat/william/` | `frontend/` |
+
+If you are an agent working for one of these people, stay within their ownership boundary. Do not modify files owned by another team member without explicit instruction.
+
+## Critical Distinction: Two Upload Flows
+
+This is the most common point of confusion. Do not conflate these two features.
+
+### Admin PDF Upload — INTERNAL ONLY
+- **Route:** `/admin/upload`
+- **User:** Beatrice / Sonia (team members seeding the database)
+- **API call:** `POST /disclosures/upload`
+- **Purpose:** Load government disclosure PDFs so the extraction pipeline can process them
+- **UI:** Minimal, no shared layout, no public nav link, never linked from any public page
+- **Styling:** Functional only — judges never see this page
+- **This is not a feature for residents. Do not treat it as one.**
+
+### Resident Complaint Form — PUBLIC FACING
+- **Route:** `/complaint`
+- **User:** Everyday residents (Maria persona)
+- **API call:** `POST /complaints`
+- **Purpose:** Anonymous reporting of AI-influenced decisions
+- **UI:** Full app layout, linked from Agency Overview, polished, mobile-friendly
+- **No file upload.** Residents fill out a text form. They never upload documents.
+
+## Public Navigation (Exact List)
+
+Only these routes appear in any nav component or shared layout:
+```
+/                   Homepage
+/agencies           Agency Directory
+/agency/[slug]      Agency Overview
+/complaint          Complaint Portal
+/about              Methodology
+```
+
+`/admin/upload` must never appear in a nav component, footer, sitemap, or layout.
+
+## Key Architecture Rules for Agents
+
+- **Never call `fetch()` directly in components.** All API calls go through `frontend/lib/api.ts`.
+- **Never reference `SUPABASE_SERVICE_KEY` in frontend code.** That key is backend-only.
+- **Never add PII fields to the complaints table or complaint form.** No name, email, phone, or IP.
+- **Never remove rate limit decorators** from `POST /complaints` or `POST /disclosures/upload`.
+- **Never store malformed LLM output.** If Grok returns non-JSON or fails Pydantic validation, raise `HTTPException(422)`.
+- **All PRs target `develop`, never `main` directly.**
+- **Do not merge your own PRs.** Open the PR and stop.
+
+## Before You Write Frontend Code
+
+Ask: is this page public-facing or internal tooling? The answer determines layout, nav, styling level, and whether it appears in any sitemap or link.
+
+## Before You Write Backend Code
+
+Ask: does this endpoint mutate data? If yes, it needs rate limiting via `slowapi` and input sanitization before any DB write.
+
+## Source of Truth for Each Area
+
+| Question | Read this file |
+|---|---|
+| What are we building and why? | `PRD.md` |
+| What does the full system look like? | `ARCHITECTURE.md` |
+| What tasks are in progress? | `ROADMAP.md` |
+| What decisions have been made and why? | `NOTES.md` |
+| What domain knowledge underlies the product? | `KNOWLEDGE.md` |
+| How does the LLM extraction pipeline work? | Part 2 of this file (below) |
+
+---
+
+# Part 2: Application Agent Pipeline Documentation
+
+This section documents the LLM-powered agentic workflows built into the application itself. It covers the multi-step agent chain used for PDF extraction, the design rationale for each step, and how to extend or debug the pipeline.
 
 ---
 

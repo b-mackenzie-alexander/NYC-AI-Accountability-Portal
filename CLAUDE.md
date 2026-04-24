@@ -13,6 +13,43 @@ Full context: see `PRD.md`, `ARCHITECTURE.md`, `ROADMAP.md`.
 
 ---
 
+## For Coding Agents
+
+If you are an AI coding agent working on this project, read this section before writing any frontend code.
+
+### Two Separate Upload Flows — Do Not Conflate Them
+
+There are two distinct upload/intake mechanisms in this app. They serve completely different users and must never be mixed into the same UI surface.
+
+**1. Admin PDF Upload (`/admin/upload`) — INTERNAL TOOLING**
+- Used by: Beatrice and Sonia (team members) to seed the database with government disclosure PDFs
+- What it does: POSTs a PDF to `POST /disclosures/upload`, which runs the Grok extraction pipeline and populates `ai_disclosures`
+- UI treatment: Bare-bones form. No shared layout. No public navigation link. No styling required beyond functional.
+- Access: No auth for the hackathon, but this page is never linked from any public page. Treat it as a backstage tool.
+- When it's used: Once, before the demo, to load the ACS LL35 PDF. Not part of the user journey.
+
+**2. Resident Complaint Form (`/complaint`) — PUBLIC FACING**
+- Used by: Everyday residents (Maria persona) who believe an AI system affected a decision about them
+- What it does: POSTs a text form to `POST /complaints`, returns an anonymous HMAC token
+- UI treatment: Full app layout, linked from Agency Overview page, polished, mobile-friendly
+- Access: Fully public, no login, no PII fields
+- When it's used: Core part of the demo and the product
+
+### Public Navigation
+
+Only these routes appear in the public nav:
+```
+/                   Homepage
+/agencies           Agency Directory
+/agency/[slug]      Agency Overview
+/complaint          Complaint Portal
+/about              Methodology
+```
+
+`/admin/upload` is never linked from any public page. Do not add it to any nav component, sitemap, or shared layout.
+
+---
+
 ## Repository Structure
 
 ```
@@ -63,7 +100,8 @@ cd frontend && npm run test
 |---|---|
 | Backend | Python 3.11, FastAPI, pdfplumber, openai SDK (pointed at xAI Grok) |
 | Frontend | Next.js 14 App Router, TypeScript, Recharts, Tailwind CSS |
-| Database | Supabase (Postgres + Storage) |
+| Database | Railway Postgres — `asyncpg` client |
+| Storage | Cloudflare R2 — `boto3` S3-compatible client |
 | LLM | Grok API (xAI) — OpenAI-compatible, free tier |
 | Data | NYC Open Data via Socrata REST API |
 | Analysis | pandas, scipy |

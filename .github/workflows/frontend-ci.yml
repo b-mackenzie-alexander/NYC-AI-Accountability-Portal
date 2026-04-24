@@ -7,9 +7,27 @@ on:
       - ".github/workflows/frontend-ci.yml"
 
 jobs:
+  check-scaffold:
+    name: Check Frontend Scaffolded
+    runs-on: ubuntu-latest
+    outputs:
+      scaffolded: ${{ steps.check.outputs.scaffolded }}
+    steps:
+      - uses: actions/checkout@v4
+      - id: check
+        run: |
+          if [ -f "frontend/package.json" ]; then
+            echo "scaffolded=true" >> $GITHUB_OUTPUT
+          else
+            echo "scaffolded=false" >> $GITHUB_OUTPUT
+            echo "::notice::frontend/package.json not found — skipping frontend CI until William pushes the scaffold."
+          fi
+
   lint-and-type-check:
     name: Lint & Type Check
     runs-on: ubuntu-latest
+    needs: check-scaffold
+    if: needs.check-scaffold.outputs.scaffolded == 'true'
     defaults:
       run:
         working-directory: frontend
@@ -35,14 +53,14 @@ jobs:
   test:
     name: Tests
     runs-on: ubuntu-latest
+    needs: check-scaffold
+    if: needs.check-scaffold.outputs.scaffolded == 'true'
     defaults:
       run:
         working-directory: frontend
     env:
       NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
       API_BASE_URL: http://localhost:8000
-      NEXT_PUBLIC_SUPABASE_URL: https://placeholder.supabase.co
-      NEXT_PUBLIC_SUPABASE_ANON_KEY: placeholder-anon-key
 
     steps:
       - uses: actions/checkout@v4
@@ -62,6 +80,8 @@ jobs:
   dependency-audit:
     name: Dependency Audit
     runs-on: ubuntu-latest
+    needs: check-scaffold
+    if: needs.check-scaffold.outputs.scaffolded == 'true'
     defaults:
       run:
         working-directory: frontend
