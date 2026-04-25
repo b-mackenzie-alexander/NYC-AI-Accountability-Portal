@@ -1,105 +1,143 @@
-import os
 import json
+import os
+from typing import Any
+
 from fastapi import APIRouter, HTTPException, Request
-from supabase import create_client
-from app.services.analysis import calculate_disparity_ratios
+
 from app.limiter import limiter
+from app.services import database
+from app.services.analysis import calculate_disparity_ratios
+from app.services.sanitize import sanitize_text
 
 router = APIRouter(prefix="/signals", tags=["signals"])
 
+DATA_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "data", "known_systems.json"
+)
 
 
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
-supabase = None
-if supabase_url and "://" in supabase_url and supabase_key:
-    supabase = create_client(supabase_url, supabase_key)
+@router.get("")
+async def list_signals(
+    agency: str | None = None,
+    signal_type: str | None = None,
+    severity: str | None = None,
+) -> list[dict[str, Any]]:
+    conditions = []
+    params: list[Any] = []
+    idx = 1
 
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(CURRENT_DIR, "..", "data", "known_systems.json")
+    if agency:
+        conditions.append(f"agency = ${idx}")
+        params.append(sanitize_text(agency))
+        idx += 1
+    if signal_type:
+        conditions.append(f"signal_type = ${idx}")
+        params.append(sanitize_text(signal_type))
+        idx += 1
+    if severity:
+        conditions.append(f"severity = ${idx}")
+        params.append(sanitize_text(severity))
+        idx += 1
+
+    where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
+    return await database.fetch_all(
+        f"SELECT * FROM bias_signals {where} ORDER BY generated_at DESC",
+        *params,
+    )
+
 
 @router.post("/check-gaps/{agency}")
-async def check_disclosure_gaps(agency: str):
-    try:
-        
-        with open(DATA_PATH, "r") as f:
-            known_data = json.load(f)
-        
-        agency_known_systems = known_data.get(agency, [])
-        
-    
-        if not supabase:
-            return {"status": "mock", "message": "Local Mode."}
-            
-        response = supabase.table("ai_disclosures").select("system_name").eq("agency_name", agency).execute()
-        disclosed_names = [r["system_name"].lower() for r in response.data]
+async def check_disclosure_gaps(agency: str) -> dict[str, object]:
+    safe_agency = sanitize_text(agency)
 
-        signals_created = []
+    with open(DATA_PATH) as f:
+        known_systems: list[dict] = json.load(f)
 
-        
-        for system in agency_known_systems:
-            if system["system_name"].lower() not in disclosed_names:
-                
-                signal_data = {
-                    "agency": agency,
-                    "system_name": system["system_name"],
-                    "signal_type": "disclosure_gap",
-                    "severity": "high",
-                    "description": f"Sistema conocido '{system['system_name']}' no aparece en la declaración oficial.",
-                    "source_urls": [system["source_url"]]
-                }
-                supabase.table("bias_signals").insert(signal_data).execute()
-                signals_created.append(system["system_name"])
+    agency_systems = [s for s in known_systems if s["agency"] == safe_agency]
 
-        return {
-            "status": "success", 
-            "gaps_found": signals_created,
-            "message": f"Generated {len(signals_created)} {agency}."
-        }
+    disclosed_rows = await database.fetch_all(
+        "SELECT system_name FROM ai_disclosures WHERE agency_name = $1",
+        safe_agency,
+    )
+    disclosed_names = {row["system_name"].lower() for row in disclosed_rows}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    signals_created: list[str] = []
+
+    for system in agency_systems:
+        urls = system.get("source_urls", [])
+        if not urls:
+            continue
+
+        if system["system_name"].lower() in disclosed_names:
+            continue
+
+        existing = await database.fetch_one(
+            """
+            SELECT id FROM bias_signals
+            WHERE agency = $1 AND system_name = $2 AND signal_type = 'disclosure_gap'
+            """,
+            safe_agency,
+            system["system_name"],
+        )
+        if existing:
+            continue
+
+        try:
+            await database.execute(
+                """
+                INSERT INTO bias_signals
+                  (agency, system_name, signal_type, severity, description, source_urls)
+                VALUES ($1, $2, 'disclosure_gap', 'high', $3, $4)
+                """,
+                safe_agency,
+                system["system_name"],
+                f"Known system '{system['system_name']}' does not appear in the official disclosure.",
+                urls,
+            )
+            signals_created.append(system["system_name"])
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=500, detail="Failed to record bias signal.") from None
+
+    return {
+        "status": "success",
+        "gaps_found": signals_created,
+        "message": f"Generated {len(signals_created)} transparency signal(s) for {safe_agency}.",
+    }
+
 
 @router.post("/generate/{agency}")
 @limiter.limit("5/minute")
-
-async def generate_agency_signals(request: Request, agency: str): 
+async def generate_agency_signals(request: Request, agency: str) -> dict[str, object]:
+    safe_agency = sanitize_text(agency)
     try:
-        
-        data_resp = supabase.table("outcome_data").select("*").eq("agency", agency).execute()
-        
-        disparity_signals = calculate_disparity_ratios(data_resp.data)
-        
+        records = await database.fetch_all(
+            "SELECT * FROM outcome_data WHERE agency = $1",
+            safe_agency,
+        )
+        disparity_signals = calculate_disparity_ratios(records)
+
         for sig in disparity_signals:
-            
-            supabase.table("bias_signals").upsert({
-                "agency": agency,
-                "signal_type": sig["signal_type"],
-                "severity": sig["severity"],
-                "description": sig["description"],
-                "metadata": sig["metadata"]
-            }).execute()
+            await database.execute(
+                """
+                INSERT INTO bias_signals
+                  (agency, signal_type, severity, description, disparity_ratio, source_urls)
+                VALUES ($1, 'disparity', $2, $3, $4, $5)
+                """,
+                safe_agency,
+                sig["severity"],
+                sig["description"],
+                sig["metadata"]["ratio"],
+                [],
+            )
 
         return {
             "status": "success",
             "signals_analyzed": len(disparity_signals),
-            "message": f"Análisis completado para {agency}."
+            "message": f"Analysis complete for {safe_agency}.",
         }
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
-
-
-@router.get("/complaints/{token}")
-async def get_complaint_status(token: str):
-    
-    resp = supabase.table("complaints").select("status, agency").eq("complaint_token", token).single().execute()
-    
-    if not resp.data:
-        raise HTTPException(status_code=404, detail="Token no válido")
-        
-    return {
-        "token": token,
-        "status": resp.data["status"],
-        "agency": resp.data["agency"],
-        "message": "Tu denuncia está siendo procesada y comparada con los hallazgos de IA."
-    }
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Signal generation failed.") from None

@@ -57,3 +57,18 @@ async def submit_complaint(request: Request, complaint: ComplaintCreate) -> dict
         "complaint_token": token,
         "message": "Save this token to check your complaint status.",
     }
+
+
+@router.get("/{token}")
+async def get_complaint_status(token: str) -> dict[str, str]:
+    row = await database.fetch_one(
+        "SELECT agency FROM complaints WHERE complaint_token = $1",
+        token,
+    )
+    if row is None:
+        raise HTTPException(status_code=404, detail="Token not found.")
+    return {
+        "token": token,
+        "status": "received",
+        "agency": row["agency"],
+    }
