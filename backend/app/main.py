@@ -1,6 +1,7 @@
 import os
 from collections.abc import AsyncGenerator
 from contextlib import asynccontextmanager
+
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
@@ -10,14 +11,16 @@ from slowapi.errors import RateLimitExceeded
 load_dotenv()
 
 from app.limiter import limiter  # noqa: E402
-from app.routes import disclosures, signals, complaints, ingest  # noqa: E402
+from app.routes import complaints, disclosures, ingest, signals  # noqa: E402
 from app.services.database import close_pool, get_pool  # noqa: E402
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
     await get_pool()
     yield
     await close_pool()
+
 
 app = FastAPI(
     title="NYC AI Accountability Portal",
@@ -38,6 +41,7 @@ app.add_middleware(
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type"],
 )
+
 
 @app.get("/health", tags=["meta"])
 async def health() -> dict[str, str]:

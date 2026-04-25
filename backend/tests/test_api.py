@@ -39,7 +39,11 @@ async def test_submit_complaint_token():
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
                 "/complaints",
-                json={"agency": "ACS", "incident_description": "Test incident", "system_name": "Test"},
+                json={
+                    "agency": "ACS",
+                    "incident_description": "Test incident",
+                    "system_name": "Test",
+                },
             )
     assert response.status_code == 200
     data = response.json()
