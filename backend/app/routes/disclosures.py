@@ -50,13 +50,13 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)) -> dict[str
     ]
 
     try:
-        response = await client.chat.completions.create(
+        response = await client.chat.completions.create(  # type: ignore[call-overload]
             model=primary_model,
             messages=messages,
             response_format={"type": "json_object"},
         )
     except openai.RateLimitError:
-        response = await client.chat.completions.create(
+        response = await client.chat.completions.create(  # type: ignore[call-overload]
             model="grok-3-mini",
             messages=messages,
             response_format={"type": "json_object"},
