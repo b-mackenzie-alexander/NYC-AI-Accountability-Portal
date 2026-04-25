@@ -1,36 +1,26 @@
 {
-  "name": "nyc-ai-accountability-portal",
+  "name": "frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "type-check": "tsc --noEmit",
-    "test": "vitest run"
+    "lint": "eslint"
   },
   "dependencies": {
-    "next": "^15.5.15",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "next": "^16.2.4",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@testing-library/react": "^16",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4",
-    "autoprefixer": "^10",
-    "eslint": "^8",
-    "eslint-config-next": "^15.5.15",
-    "jsdom": "^25",
-    "postcss": "^8",
-    "tailwindcss": "^3",
-    "typescript": "^5",
-    "vitest": "^2"
-  },
-  "overrides": {
-    "glob": "^11.0.0"
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4",
+    "typescript": "^5"
   }
 }
