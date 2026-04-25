@@ -9,7 +9,9 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "autoprefixer": "^10.5.0",
     "next": "^16.2.4",
+    "postcss": "^8.5.10",
     "react": "19.2.4",
     "react-dom": "19.2.4"
   },
@@ -20,7 +22,7 @@
     "@types/react-dom": "^19",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
-    "tailwindcss": "^4",
+    "tailwindcss": "^4.2.4",
     "typescript": "^5"
   }
 }
