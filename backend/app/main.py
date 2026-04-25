@@ -5,15 +5,14 @@ from contextlib import asynccontextmanager
 from dotenv import load_dotenv
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi import _rate_limit_exceeded_handler
 from slowapi.errors import RateLimitExceeded
-from slowapi.util import get_remote_address
-
-from app.services.database import close_pool, get_pool
 
 load_dotenv()
 
-limiter = Limiter(key_func=get_remote_address)
+from app.limiter import limiter  # noqa: E402
+from app.routes import complaints, disclosures, ingest, signals  # noqa: E402
+from app.services.database import close_pool, get_pool  # noqa: E402
 
 
 @asynccontextmanager
@@ -35,7 +34,6 @@ app.state.limiter = limiter
 app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)  # type: ignore[arg-type]
 
 allowed_origins = [o.strip() for o in os.environ.get("ALLOWED_ORIGINS", "").split(",") if o.strip()]
-
 app.add_middleware(
     CORSMiddleware,
     allow_origins=allowed_origins,
@@ -50,9 +48,7 @@ async def health() -> dict[str, str]:
     return {"status": "ok"}
 
 
-# Routes registered here by Saul as they are built:
-# from app.routes import disclosures, signals, complaints, ingest
-# app.include_router(disclosures.router)
-# app.include_router(signals.router)
-# app.include_router(complaints.router)
-# app.include_router(ingest.router)
+app.include_router(disclosures.router)
+app.include_router(complaints.router)
+app.include_router(signals.router)
+app.include_router(ingest.router)
