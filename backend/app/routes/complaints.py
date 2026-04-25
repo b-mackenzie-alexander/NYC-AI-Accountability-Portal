@@ -50,7 +50,7 @@ async def submit_complaint(request: Request, complaint: ComplaintCreate) -> dict
     except HTTPException:
         raise
     except Exception:
-        raise HTTPException(status_code=500, detail="Failed to record complaint.")
+        raise HTTPException(status_code=500, detail="Failed to record complaint.") from None
 
     return {
         "status": "received",

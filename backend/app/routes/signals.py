@@ -65,7 +65,7 @@ async def check_disclosure_gaps(agency: str) -> dict[str, object]:
         except HTTPException:
             raise
         except Exception:
-            raise HTTPException(status_code=500, detail="Failed to record bias signal.")
+            raise HTTPException(status_code=500, detail="Failed to record bias signal.") from None
 
     return {
         "status": "success",

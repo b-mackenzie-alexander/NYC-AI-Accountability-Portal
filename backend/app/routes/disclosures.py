@@ -21,7 +21,7 @@ router = APIRouter(prefix="/disclosures", tags=["disclosures"])
 
 @router.post("/upload")
 @limiter.limit("5/minute")
-async def upload_pdf(request: Request, file: UploadFile = File(...)) -> dict[str, object]:
+async def upload_pdf(request: Request, file: UploadFile = File(...)) -> dict[str, object]:  # noqa: B008
     if file.content_type != "application/pdf":
         raise HTTPException(status_code=422, detail="Only PDF files are accepted.")
 
@@ -69,7 +69,7 @@ async def upload_pdf(request: Request, file: UploadFile = File(...)) -> dict[str
         raise HTTPException(
             status_code=422,
             detail="Extraction failed: response did not match expected schema.",
-        )
+        ) from None
 
     key = f"{uuid.uuid4()}.pdf"
     storage.upload_pdf(io.BytesIO(contents), key)
