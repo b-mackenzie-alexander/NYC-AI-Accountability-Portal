@@ -19,7 +19,7 @@
 | ⬜ | **Sonia** | Deploy schema migration to Railway Postgres | All 4 tables created, RLS enabled on `complaints` |
 | ✅ | **Beatrice** | Create Cloudflare R2 bucket for PDFs | `disclosure-pdfs` bucket exists, R2 credentials set in Railway |
 | ✅ | **Sonia** | Seed `known_systems.json` with ACS Severe Harm PRM entry | Entry has ≥2 citation URLs |
-| ⬜ | **William** | Next.js app scaffolded, connected to API via env var | `npm run dev` starts without errors |
+| ✅ | **William** | Next.js app scaffolded, connected to API via env var | `npm run dev` starts without errors |
 
 ---
 
@@ -28,11 +28,11 @@
 
 | Status | Owner | Task | Done When |
 |---|---|---|---|
-| ⬜ | **Saul** | `pdfplumber` text extraction service | Extracts text from ACS LL35 PDF without errors |
-| ⬜ | **Saul** | Grok API extraction service with structured prompt | Returns valid JSON matching `ai_disclosures` schema |
-| ⬜ | **Saul** | `POST /disclosures/upload` endpoint | PDF upload → extraction → Supabase insert in one request |
+| ✅ | **Saul** | `pdfplumber` text extraction service | Extracts text from ACS LL35 PDF without errors |
+| ✅ | **Saul** | Grok API extraction service with structured prompt | Returns valid JSON matching `ai_disclosures` schema |
+| ✅ | **Saul** | `POST /disclosures/upload` endpoint | PDF upload → extraction → R2 upload → DB insert in one request |
 | ⬜ | **Saul** | `GET /disclosures` endpoint with `?agency=` filter | Returns JSON array of disclosure records |
-| ⬜ | **Saul** | `POST /ingest/socrata` endpoint | Triggers ingest job, returns row count |
+| ✅ | **Saul** | `POST /ingest/socrata` endpoint | Triggers ingest job, returns row count |
 | ⬜ | **Sonia** | Socrata ingest service (ACS datasets) | Pulls foster care placement data, upserts into `outcome_data` |
 | ⬜ | **Sonia** | Verify ACS dataset IDs on Socrata | 3 dataset IDs confirmed and documented in NOTES.md |
 | ✅ | **Beatrice** | Security middleware: rate limiting, CORS, input sanitization | `slowapi` configured; CORS restricted to localhost + Cloudflare Pages domain |
@@ -47,10 +47,10 @@
 | Status | Owner | Task | Done When |
 |---|---|---|---|
 | ⬜ | **Saul** | Disparity ratio calculation service | Returns signal dicts for ratios ≥ 1.2x with severity classification |
-| ⬜ | **Saul** | Disclosure gap detection (cross-reference `known_systems.json`) | ACS Severe Harm PRM appears as `disclosure_gap` signal |
-| ⬜ | **Saul** | `POST /signals/generate` endpoint | Runs full analysis pipeline for an agency, upserts to `bias_signals` |
+| ✅ | **Saul** | Disclosure gap detection (cross-reference `known_systems.json`) | ACS Severe Harm PRM appears as `disclosure_gap` signal |
+| ✅ | **Saul** | `POST /signals/check-gaps/{agency}` endpoint | Runs gap analysis for an agency, upserts to `bias_signals` |
 | ⬜ | **Saul** | `GET /signals` endpoint with filters | Filters by `agency`, `signal_type`, `severity` |
-| ⬜ | **Saul** | Complaint intake endpoint with HMAC token | `POST /complaints` returns token; no PII stored |
+| ✅ | **Saul** | Complaint intake endpoint with HMAC token | `POST /complaints` returns token; no PII stored |
 | ⬜ | **Saul** | Complaint status endpoint | `GET /complaints/{token}` returns status without exposing complaint content |
 | ⬜ | **Sonia** | Verify disparity ratios against raw Socrata numbers manually | Spot-check 3 race/ethnicity groups; ratios match hand calculation |
 | ⬜ | **Beatrice** | Analysis pipeline integration tests | Signal generation tested with fixture data |
@@ -82,7 +82,7 @@
 
 | Status | Owner | Task | Done When |
 |---|---|---|---|
-| ⬜ | **Saul** | Deploy backend to Railway | Live URL returns `GET /health` 200 |
+| ✅ | **Saul** | Deploy backend to Railway | Live URL returns `GET /health` 200 |
 | ⬜ | **Saul** | Trigger signal generation on production | Bias signals appear on live ACS page |
 | ⬜ | **William** | Deploy frontend to Cloudflare Pages | Live URL renders ACS Agency Overview with real data |
 | ⬜ | **Sonia** | Load ACS LL35 PDF via admin upload on production | Disclosure gap appears on live ACS page |
