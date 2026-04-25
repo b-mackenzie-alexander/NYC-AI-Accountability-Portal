@@ -21,52 +21,64 @@ async def ingest_nyc_data() -> dict[str, object]:
     if not datasets:
         raise HTTPException(status_code=500, detail="No datasets configured.")
 
-    dataset = datasets[0]
-    url = dataset["url"]
-    agency = dataset["agency"]
-    dataset_id = dataset["dataset_id"]
     app_token = os.environ.get("SOCRATA_APP_TOKEN", "")
+    total_ingested = 0
 
-    params: dict[str, str] = {"$limit": "1000"}
-    if app_token:
-        params["$$app_token"] = app_token
+    for dataset in datasets:
+        url = dataset["url"]
+        agency = dataset["agency"]
+        dataset_id = dataset["dataset_id"]
+        outcome_type = dataset.get("outcome_type", "referral")
+        year = int(dataset.get("year", 2024))
+        count_column = dataset.get("count_column", "count")
+        report_period = dataset.get("report_period")
 
-    async with httpx.AsyncClient(timeout=10.0) as client:
-        response = await client.get(url, params=params)
+        params: dict[str, str] = {
+            "$limit": "1000",
+            "category": "Race/Ethnicity",
+            "child_parent": "Children",
+        }
+        if report_period:
+            params["report_period"] = report_period
+        if app_token:
+            params["$$app_token"] = app_token
 
-    if response.status_code != 200:
-        raise HTTPException(status_code=502, detail="Socrata fetch failed.")
+        async with httpx.AsyncClient(timeout=10.0) as client:
+            response = await client.get(url, params=params)
 
-    raw_data: list[dict] = response.json()
-    year = int(dataset.get("year", 2024))
-    outcome_type = dataset.get("outcome_type", "referral")
-    records = raw_data[:100]
+        if response.status_code != 200:
+            raise HTTPException(status_code=502, detail="Socrata fetch failed.")
 
-    for record in records:
-        raw_count = record.get("count", "0")
-        try:
-            count = int(float(str(raw_count).strip()))
-        except (ValueError, TypeError):
-            count = 0
+        raw_data: list[dict] = response.json()
+        records = raw_data[:100]
 
-        await database.execute(
-            """
-            INSERT INTO outcome_data
-              (agency, dataset_id, year, race_ethnicity, outcome_type, count)
-            VALUES ($1, $2, $3, $4, $5, $6)
-            ON CONFLICT (agency, dataset_id, year, race_ethnicity, outcome_type)
-            DO UPDATE SET count = EXCLUDED.count
-            """,
-            agency,
-            dataset_id,
-            year,
-            record.get("race_ethnicity", ""),
-            outcome_type,
-            count,
-        )
+        for record in records:
+            raw_count = record.get(count_column, "0")
+            try:
+                count = int(float(str(raw_count).strip()))
+            except (ValueError, TypeError):
+                count = 0
+
+            await database.execute(
+                """
+                INSERT INTO outcome_data
+                  (agency, dataset_id, year, race_ethnicity, outcome_type, count)
+                VALUES ($1, $2, $3, $4, $5, $6)
+                ON CONFLICT (agency, dataset_id, year, race_ethnicity, outcome_type)
+                DO UPDATE SET count = EXCLUDED.count
+                """,
+                agency,
+                dataset_id,
+                year,
+                record.get("sub_category", ""),
+                outcome_type,
+                count,
+            )
+
+        total_ingested += len(records)
 
     return {
         "status": "success",
-        "records_ingested": len(records),
-        "message": f"Ingested {len(records)} records from {agency} dataset.",
+        "records_ingested": total_ingested,
+        "message": f"Ingested {total_ingested} records across {len(datasets)} dataset(s).",
     }

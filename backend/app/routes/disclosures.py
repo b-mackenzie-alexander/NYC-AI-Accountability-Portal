@@ -3,6 +3,7 @@ import json
 import os
 import uuid
 from json import JSONDecodeError
+from typing import Any
 
 import openai
 import pdfplumber
@@ -17,6 +18,17 @@ from app.services.grok_client import get_grok_client
 from app.services.sanitize import sanitize_text
 
 router = APIRouter(prefix="/disclosures", tags=["disclosures"])
+
+
+@router.get("")
+async def list_disclosures(agency: str | None = None) -> list[dict[str, Any]]:
+    safe_agency = sanitize_text(agency) if agency else None
+    if safe_agency:
+        return await database.fetch_all(
+            "SELECT * FROM ai_disclosures WHERE agency_name = $1 ORDER BY extracted_at DESC",
+            safe_agency,
+        )
+    return await database.fetch_all("SELECT * FROM ai_disclosures ORDER BY extracted_at DESC")
 
 
 @router.post("/upload")
