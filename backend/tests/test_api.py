@@ -11,10 +11,14 @@ os.environ.setdefault("GROK_API_KEY", "test-key")
 os.environ.setdefault("R2_ENDPOINT_URL", "https://test.r2.cloudflarestorage.com")
 os.environ.setdefault("R2_ACCESS_KEY_ID", "test-key-id")
 os.environ.setdefault("R2_SECRET_ACCESS_KEY", "test-secret")
+os.environ.setdefault("ADMIN_API_TOKEN", "test-admin-token")
 
 from app.main import app  # noqa: E402
+from app.models.pipeline import PipelineResult, ValidationResult  # noqa: E402
 
 pytestmark = pytest.mark.asyncio
+
+ADMIN_HEADERS = {"X-Admin-Token": "test-admin-token"}
 
 
 @pytest.mark.asyncio
@@ -67,7 +71,7 @@ async def test_ingest_socrata_status():
         patch("httpx.AsyncClient.get", AsyncMock(return_value=mock_response)),
     ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post("/ingest/socrata")
+            response = await client.post("/ingest/socrata", headers=ADMIN_HEADERS)
     assert response.status_code == 200
     assert response.json()["status"] == "success"
 
@@ -121,7 +125,7 @@ async def test_ingest_socrata_502_on_failure():
         patch("httpx.AsyncClient.get", AsyncMock(return_value=mock_response)),
     ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
-            response = await client.post("/ingest/socrata")
+            response = await client.post("/ingest/socrata", headers=ADMIN_HEADERS)
     assert response.status_code == 502
 
 
@@ -139,7 +143,67 @@ async def test_check_gaps():
     ):
         async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
             response = await client.post(
-                "/signals/check-gaps/Administration for Children's Services"
+                "/signals/check-gaps/Administration for Children's Services",
+                headers=ADMIN_HEADERS,
             )
     assert response.status_code == 200
     assert response.json()["status"] == "success"
+
+
+@pytest.mark.asyncio
+async def test_internal_endpoint_requires_admin_token():
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/ingest/socrata")
+    assert response.status_code == 401
+
+
+@pytest.mark.asyncio
+async def test_internal_endpoint_rejects_wrong_admin_token():
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/ingest/socrata",
+                headers={"X-Admin-Token": "wrong-token"},
+            )
+    assert response.status_code == 403
+
+
+@pytest.mark.asyncio
+async def test_upload_delegates_to_pipeline_with_admin_token():
+    validation = ValidationResult(
+        validated_systems=[],
+        overall_quality="high",
+        review_recommended=False,
+        validation_notes="0 systems extracted. Quality: high.",
+    )
+    result = PipelineResult(
+        agency_name="ACS",
+        systems=[],
+        gaps=[],
+        validation=validation,
+        extraction_confidence=1.0,
+    )
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
+        patch("app.routes.disclosures.extract_pdf_text", return_value="A" * 120),
+        patch("app.routes.disclosures.run_extraction_pipeline", AsyncMock(return_value=result)),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/disclosures/upload",
+                headers=ADMIN_HEADERS,
+                data={"agency_name": "ACS"},
+                files={"file": ("test.pdf", b"%PDF fake", "application/pdf")},
+            )
+
+    assert response.status_code == 200
+    assert response.json()["status"] == "received"
+    assert response.json()["agency_name"] == "ACS"

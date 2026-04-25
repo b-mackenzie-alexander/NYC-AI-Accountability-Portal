@@ -2,8 +2,10 @@ import json
 import os
 
 import httpx
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
+from app.auth import require_admin_token
+from app.limiter import limiter
 from app.services import database
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
@@ -14,7 +16,11 @@ DATA_PATH = os.path.join(
 
 
 @router.post("/socrata")
-async def ingest_nyc_data() -> dict[str, object]:
+@limiter.limit("5/minute")
+async def ingest_nyc_data(
+    request: Request,
+    _admin: None = Depends(require_admin_token),
+) -> dict[str, object]:
     with open(DATA_PATH) as f:
         datasets: list[dict] = json.load(f)
 
