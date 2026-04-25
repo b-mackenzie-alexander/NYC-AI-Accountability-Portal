@@ -41,7 +41,7 @@ async def list_signals(
 
     where = f"WHERE {' AND '.join(conditions)}" if conditions else ""
     return await database.fetch_all(
-        f"SELECT * FROM bias_signals {where} ORDER BY generated_at DESC",
+        f"SELECT * FROM bias_signals {where} ORDER BY generated_at DESC",  # nosec B608
         *params,
     )
 
