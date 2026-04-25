@@ -62,18 +62,18 @@
 
 | Status | Owner | Task | Done When |
 |---|---|---|---|
-| ⬜ | **William** | `lib/api.ts` — typed fetch helpers for all endpoints | All API calls typed; error handling consistent |
-| ⬜ | **William** | Agency Overview page (`/agency/[slug]`) | Renders disclosures table, signal cards, disclosure gaps |
-| ⬜ | **William** | `SignalCard` component | Severity color coding, signal type label, source URL links |
-| ⬜ | **William** | `DisclosureTable` component | Disclosed systems + gap rows in red; no data state handled |
-| ⬜ | **William** | Disparity bar chart (Recharts) | Horizontal bars by race/ethnicity, colored by severity |
-| ⬜ | **William** | Complaint form (`/complaint`) | Submits to backend, renders token confirmation |
-| ⬜ | **William** | Complaint status lookup widget | Token input → status display |
-| ⬜ | **William** | Homepage (`/`) | Search bar, ACS featured card with signal badge, explainer |
-| ⬜ | **William** | Agency Directory (`/agencies`) | ACS row with real data; other agencies stubbed |
-| ⬜ | **William** | Methodology page (`/about`) | Data sources, calculation method, what we don't claim |
-| ⬜ | **William** | Admin upload page (`/admin/upload`) | PDF upload form, calls `POST /disclosures/upload` |
-| ⬜ | **William** | Responsive layout pass | Readable on mobile; no broken layouts at 375px |
+| ✅ | **William** | `lib/api.ts` — typed fetch helpers for all endpoints | All API calls typed; error handling consistent |
+| ✅ | **William** | Agency Overview page (`/agency/[slug]`) | Renders disclosures table, signal cards, disclosure gaps |
+| ⬜ | **William** | `SignalCard` component | Severity color coding, signal type label, source URL links — signals rendered inline; extract to component |
+| ⬜ | **William** | `DisclosureTable` component | Disclosed systems + gap rows in red; no data state handled — rendered inline; extract to component |
+| ⬜ | **William** | Disparity bar chart (Recharts) | Horizontal bars by race/ethnicity, colored by severity — not yet implemented |
+| ✅ | **William** | Complaint form (`/complaint`) | Submits to backend, renders token confirmation |
+| ✅ | **William** | Complaint status lookup widget | `/complaint/status` page with token input → status display |
+| ✅ | **William** | Homepage (`/`) | Landing page with nav and ACS entry point |
+| ✅ | **William** | Agency Directory (`/agencies`) | ACS row with real data; other agencies stubbed |
+| ✅ | **William** | Methodology page (`/about`) | Data sources, calculation method, what we don't claim |
+| ✅ | **William** | Admin upload page (`/admin/upload`) | PDF upload form, calls `POST /disclosures/upload` |
+| ✅ | **William** | Responsive layout pass | Tailwind responsive classes in use (`sm:`, `md:`); mobile-friendly |
 
 ---
 
