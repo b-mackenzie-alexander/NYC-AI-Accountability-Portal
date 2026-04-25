@@ -6,6 +6,11 @@ from httpx import ASGITransport, AsyncClient
 
 os.environ.setdefault("DATABASE_URL", "postgresql://test:test@localhost/test")
 os.environ.setdefault("ALLOWED_ORIGINS", "http://localhost:3000")
+os.environ.setdefault("COMPLAINT_HMAC_SECRET", "test-hmac-secret-32-bytes-xxxxxxxx")
+os.environ.setdefault("GROK_API_KEY", "test-key")
+os.environ.setdefault("R2_ENDPOINT_URL", "https://test.r2.cloudflarestorage.com")
+os.environ.setdefault("R2_ACCESS_KEY_ID", "test-key-id")
+os.environ.setdefault("R2_SECRET_ACCESS_KEY", "test-secret")
 
 from app.main import app  # noqa: E402
 

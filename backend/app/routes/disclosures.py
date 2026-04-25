@@ -1,95 +1,97 @@
-import os
+import io
 import json
-import pdfplumber
-from fastapi import APIRouter, UploadFile, File, HTTPException
-from openai import OpenAI  
-from supabase import create_client
-from dotenv import load_dotenv
+import os
+import uuid
+from json import JSONDecodeError
 
-# 1. LOAD the environment variables
-load_dotenv()
+import openai
+import pdfplumber
+from fastapi import APIRouter, File, HTTPException, Request, UploadFile
+from pydantic import ValidationError
+
+from app.limiter import limiter
+from app.models.disclosure import DisclosureExtraction
+from app.services import database, storage
+from app.services.extraction_prompt import EXTRACTION_SYSTEM_PROMPT, build_extraction_prompt
+from app.services.grok_client import get_grok_client
+from app.services.sanitize import sanitize_text
 
 router = APIRouter(prefix="/disclosures", tags=["disclosures"])
 
-# 2. GET credentials
-api_key = os.getenv("GEMINI_API_KEY")
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_KEY") 
-
-# 3. Validation & Client Setup
-if not api_key:
-    print(" WARNING: XAI_API_KEY is missing. AI extraction will fail.")
-
-client = OpenAI(
-    api_key=api_key or "missing_key",
-    base_url="https://generativelanguage.googleapis.com/v1beta/openai/",
-)
-
-# Robust Supabase Init (won't crash if keys are placeholders like '///')
-is_supabase_valid = supabase_url and "://" in supabase_url and len(supabase_key or "") > 10
-supabase = create_client(
-    supabase_url if is_supabase_valid else "https://placeholder.supabase.co", 
-    supabase_key if is_supabase_valid else "placeholder"
-)
 
 @router.post("/upload")
-async def upload_pdf(file: UploadFile = File(...)):
+@limiter.limit("5/minute")
+async def upload_pdf(request: Request, file: UploadFile = File(...)) -> dict[str, object]:
+    if file.content_type != "application/pdf":
+        raise HTTPException(status_code=422, detail="Only PDF files are accepted.")
+
+    contents = await file.read()
+    if len(contents) > 10 * 1024 * 1024:
+        raise HTTPException(status_code=422, detail="File exceeds 10MB limit.")
+
+    raw_text = ""
+    with pdfplumber.open(io.BytesIO(contents)) as pdf:
+        for page in pdf.pages:
+            page_text = page.extract_text()
+            if page_text:
+                raw_text += page_text + "\n"
+
+    if len(raw_text.strip()) < 100:
+        raise HTTPException(
+            status_code=422,
+            detail="PDF appears to be scanned. Text extraction not supported.",
+        )
+
+    primary_model = os.environ.get("GROK_MODEL", "grok-3")
+    client = get_grok_client()
+    messages = [
+        {"role": "system", "content": EXTRACTION_SYSTEM_PROMPT},
+        {"role": "user", "content": build_extraction_prompt(raw_text)},
+    ]
+
     try:
-        # 4. Extract text from PDF
-        raw_text = ""
-        with pdfplumber.open(file.file) as pdf:
-            for page in pdf.pages:
-                page_text = page.extract_text()
-                if page_text:
-                    raw_text += page_text + "\n"
+        response = await client.chat.completions.create(
+            model=primary_model,
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
+    except openai.RateLimitError:
+        response = await client.chat.completions.create(
+            model="grok-3-mini",
+            messages=messages,
+            response_format={"type": "json_object"},
+        )
 
-        if not raw_text.strip():
-            raise ValueError("The uploaded PDF appears to be empty or unreadable.")
+    try:
+        raw_json = json.loads(response.choices[0].message.content or "{}")
+        extraction = DisclosureExtraction(**raw_json)
+    except (JSONDecodeError, ValidationError):
+        raise HTTPException(
+            status_code=422,
+            detail="Extraction failed: response did not match expected schema.",
+        )
 
-        # 5. Smart Model Selection
-        # We try the .env model first, but keep backups in case xAI rejects the name
-        models_to_try = [os.getenv("MODEL", "gemini-2.5-flash")]
-        
-        response = None
-        last_error = ""
+    key = f"{uuid.uuid4()}.pdf"
+    storage.upload_pdf(io.BytesIO(contents), key)
+    source_url = storage.get_presigned_url(key)
 
-        for model_name in models_to_try:
-            if not model_name: continue
-            try:
-                response = client.chat.completions.create(
-                    model=model_name,
-                    messages=[
-                        {"role": "system", "content": "You are a specialized legal data extractor. Return ONLY JSON."},
-                        {"role": "user", "content": f"Extract: agency_name, system_name, purpose, vendor from: {raw_text[:8000]}"}
-                    ],
-                    response_format={"type": "json_object"}
-                )
-                if response: break # Success!
-            except Exception as e:
-                last_error = str(e)
-                print(f"Skipping model {model_name}: {last_error}")
+    await database.execute(
+        """
+        INSERT INTO ai_disclosures
+          (agency_name, system_name, purpose, vendor, extraction_confidence, disclosure_source_url)
+        VALUES ($1, $2, $3, $4, $5, $6)
+        """,
+        sanitize_text(extraction.agency_name),
+        sanitize_text(extraction.system_name),
+        sanitize_text(extraction.purpose or ""),
+        sanitize_text(extraction.vendor or ""),
+        extraction.extraction_confidence,
+        source_url,
+    )
 
-        if not response:
-            raise Exception(f"All Grok models failed. Last error: {last_error}")
-
-        # 6. Parse and Print Result
-        extracted_data = json.loads(response.choices[0].message.content)
-        print(" SUCCESS! Extracted Data:", json.dumps(extracted_data, indent=2))
-
-        # 7. Save to Supabase (Only if valid keys exist)
-        if is_supabase_valid:
-            supabase.table("ai_disclosures").insert({
-                "agency_name": extracted_data.get("agency_name"),
-                "system_name": extracted_data.get("system_name"),
-                "purpose": extracted_data.get("purpose"),
-                "vendor": extracted_data.get("vendor"),
-                "disclosure_source_url": file.filename 
-            }).execute()
-        else:
-            print("Local Mode: Skipping database save (No Supabase keys).")
-
-        return {"status": "success", "data": extracted_data}
-
-    except Exception as e:
-        print(f" UPLOAD ERROR: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    return {
+        "status": "received",
+        "agency_name": extraction.agency_name,
+        "system_name": extraction.system_name,
+        "extraction_confidence": extraction.extraction_confidence,
+    }

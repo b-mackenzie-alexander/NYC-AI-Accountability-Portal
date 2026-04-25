@@ -1,68 +1,72 @@
+import json
 import os
+
 import httpx
 from fastapi import APIRouter, HTTPException
-from supabase import create_client
+
+from app.services import database
 
 router = APIRouter(prefix="/ingest", tags=["ingest"])
 
+DATA_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "data", "socrata_datasets.json"
+)
 
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
-supabase = None
-if supabase_url and "://" in supabase_url and supabase_key:
-    supabase = create_client(supabase_url, supabase_key)
-
-SOCRATA_DATASET_URL = os.getenv("SOCRATA_DATASET_URL")
 
 @router.post("/socrata")
-async def ingest_nyc_data():
-    
-    try:
-        
-        async with httpx.AsyncClient(timeout=10.0) as client:
-            try:
-                response = await client.get(SOCRATA_DATASET_URL)
-                if response.status_code == 200:
-                    raw_data = response.json()
-                else:
-                    raise Exception("Status not 200")
-            except Exception:
-                # 
-                print("⚠️ Usando datos de respaldo (Fallback) para el demo.")
-                raw_data = [
-                    {"race_ethnicity": "Black", "count": "1200"},
-                    {"race_ethnicity": "White", "count": "450"},
-                    {"race_ethnicity": "Hispanic", "count": "980"},
-                    {"race_ethnicity": "Asian", "count": "310"}
-                ]
+async def ingest_nyc_data() -> dict[str, object]:
+    with open(DATA_PATH) as f:
+        datasets: list[dict] = json.load(f)
 
-        
-        if not supabase:
-            return {
-                "status": "mock_success", 
-                "records_fetched": len(raw_data),
-                "data_sample": raw_data[:3],
-                "message": "Local Mode."
-            }
+    if not datasets:
+        raise HTTPException(status_code=500, detail="No datasets configured.")
 
-        # 
-        for record in raw_data[:20]:
-            data_to_save = {
-                "agency": "ACS",
-                "dataset_id": "7u79-x2u6",
-                "year": 2024,
-                "race_ethnicity": record.get("race_ethnicity"),
-                "outcome_type": "referral",
-                "count": int(record.get("count", 0)) if str(record.get("count")).isdigit() else 0
-            }
-            supabase.table("outcome_data").upsert(data_to_save).execute()
+    dataset = datasets[0]
+    url = dataset["url"]
+    agency = dataset["agency"]
+    dataset_id = dataset["dataset_id"]
+    app_token = os.environ.get("SOCRATA_APP_TOKEN", "")
 
-        return {
-            "status": "success", 
-            "message": f"Ingest {len(raw_data[:20])}",
-            "data_sample": raw_data[:3]
-        }
+    params: dict[str, str] = {"$limit": "1000"}
+    if app_token:
+        params["$$app_token"] = app_token
 
-    except Exception as e:
-        print(f" INGEST ERROR: {str(e)}")
-        raise HTTPException(status_code=500, detail=str(e))
+    async with httpx.AsyncClient(timeout=10.0) as client:
+        response = await client.get(url, params=params)
+
+    if response.status_code != 200:
+        raise HTTPException(status_code=502, detail="Socrata fetch failed.")
+
+    raw_data: list[dict] = response.json()
+    year = int(dataset.get("year", 2024))
+    outcome_type = dataset.get("outcome_type", "referral")
+    records = raw_data[:100]
+
+    for record in records:
+        raw_count = record.get("count", "0")
+        try:
+            count = int(float(str(raw_count).strip()))
+        except (ValueError, TypeError):
+            count = 0
+
+        await database.execute(
+            """
+            INSERT INTO outcome_data
+              (agency, dataset_id, year, race_ethnicity, outcome_type, count)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            ON CONFLICT (agency, dataset_id, year, race_ethnicity, outcome_type)
+            DO UPDATE SET count = EXCLUDED.count
+            """,
+            agency,
+            dataset_id,
+            year,
+            record.get("race_ethnicity", ""),
+            outcome_type,
+            count,
+        )
+
+    return {
+        "status": "success",
+        "records_ingested": len(records),
+        "message": f"Ingested {len(records)} records from {agency} dataset.",
+    }

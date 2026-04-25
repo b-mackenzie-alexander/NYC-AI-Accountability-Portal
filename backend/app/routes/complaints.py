@@ -1,31 +1,23 @@
-import os
-import hmac
 import hashlib
+import hmac
+import os
 import secrets
 from datetime import datetime
-from fastapi import APIRouter, HTTPException
+
+from fastapi import APIRouter, HTTPException, Request
 from pydantic import BaseModel
-from supabase import create_client
+
+from app.limiter import limiter
+from app.services import database
+from app.services.sanitize import sanitize_text
 
 router = APIRouter(prefix="/complaints", tags=["complaints"])
 
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
+_secret = os.environ.get("COMPLAINT_HMAC_SECRET")
+if not _secret:
+    raise RuntimeError("COMPLAINT_HMAC_SECRET environment variable is not set.")
+HMAC_SECRET: str = _secret
 
-# Check if keys are actually usable
-is_db_ready = (
-    supabase_url and "://" in supabase_url and 
-    supabase_key and len(supabase_key) > 10
-)
-
-if is_db_ready:
-    supabase = create_client(supabase_url, supabase_key)
-else:
-    supabase = None 
-    print(" Running in LOCAL MODE: Data will not be saved to Supabase.")
-
-# 1. ADD A FALLBACK for the secret so it doesn't crash if .env is missing it
-HMAC_SECRET = os.getenv("COMPLAINT_HMAC_SECRET", "temporary_hackathon_secret")
 
 class ComplaintCreate(BaseModel):
     agency: str
@@ -33,43 +25,35 @@ class ComplaintCreate(BaseModel):
     incident_description: str
     affected_service: str | None = None
 
+
 @router.post("")
-async def submit_complaint(complaint: ComplaintCreate):
+@limiter.limit("10/minute")
+async def submit_complaint(request: Request, complaint: ComplaintCreate) -> dict[str, str]:
+    nonce = secrets.token_hex(16)
+    message = f"{complaint.agency}-{datetime.now().isoformat()}-{nonce}"
+    token = hmac.new(HMAC_SECRET.encode(), message.encode(), hashlib.sha256).hexdigest()
+
     try:
-        # Unique code and anonymous
-        nonce = secrets.token_hex(16)
-        message = f"{complaint.agency}-{datetime.now().isoformat()}-{nonce}"
-        
-        token = hmac.new(
-            HMAC_SECRET.encode(),
-            message.encode(),
-            hashlib.sha256
-        ).hexdigest()
+        await database.execute(
+            """
+            INSERT INTO complaints
+              (complaint_token, complaint_nonce, agency, system_name, incident_description, affected_service)
+            VALUES ($1, $2, $3, $4, $5, $6)
+            """,
+            token,
+            nonce,
+            sanitize_text(complaint.agency),
+            sanitize_text(complaint.system_name or ""),
+            sanitize_text(complaint.incident_description),
+            sanitize_text(complaint.affected_service or ""),
+        )
+    except HTTPException:
+        raise
+    except Exception:
+        raise HTTPException(status_code=500, detail="Failed to record complaint.")
 
-        # 2. ADD THIS IF STATEMENT
-        # Only attempt database insert if supabase was successfully initialized
-        if supabase:
-            data = {
-                "complaint_token": token,
-                "complaint_nonce": nonce,
-                "agency": complaint.agency,
-                "system_name": complaint.system_name,
-                "incident_description": complaint.incident_description,
-                "affected_service": complaint.affected_service
-            }
-            supabase.table("complaints").insert(data).execute()
-        else:
-            # This logs to your VS Code terminal so you can verify it's working
-            print(f" MOCK SAVE: Generated token {token} for {complaint.agency}")
-
-        # Return the token to the user
-        return {
-            "status": "success",
-            "complaint_token": token,
-            "message": "Guarda este código para revisar el estado de tu denuncia."
-        }
-
-    except Exception as e:
-        # Improved error logging for debugging
-        print(f" COMPLAINT ERROR: {str(e)}")
-        raise HTTPException(status_code=500, detail=f"Error al procesar denuncia: {str(e)}")
+    return {
+        "status": "received",
+        "complaint_token": token,
+        "message": "Save this token to check your complaint status.",
+    }

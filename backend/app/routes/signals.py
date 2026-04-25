@@ -1,59 +1,74 @@
-import os
 import json
+import os
+
 from fastapi import APIRouter, HTTPException
-from supabase import create_client
+
+from app.services import database
+from app.services.sanitize import sanitize_text
 
 router = APIRouter(prefix="/signals", tags=["signals"])
 
+DATA_PATH = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), "..", "data", "known_systems.json"
+)
 
-
-supabase_url = os.getenv("SUPABASE_URL")
-supabase_key = os.getenv("SUPABASE_SERVICE_KEY")
-supabase = None
-if supabase_url and "://" in supabase_url and supabase_key:
-    supabase = create_client(supabase_url, supabase_key)
-
-CURRENT_DIR = os.path.dirname(os.path.abspath(__file__))
-DATA_PATH = os.path.join(CURRENT_DIR, "..", "data", "known_systems.json")
 
 @router.post("/check-gaps/{agency}")
-async def check_disclosure_gaps(agency: str):
-    try:
-        
-        with open(DATA_PATH, "r") as f:
-            known_data = json.load(f)
-        
-        agency_known_systems = known_data.get(agency, [])
-        
-    
-        if not supabase:
-            return {"status": "mock", "message": "Local Mode."}
-            
-        response = supabase.table("ai_disclosures").select("system_name").eq("agency_name", agency).execute()
-        disclosed_names = [r["system_name"].lower() for r in response.data]
+async def check_disclosure_gaps(agency: str) -> dict[str, object]:
+    safe_agency = sanitize_text(agency)
 
-        signals_created = []
+    with open(DATA_PATH) as f:
+        known_systems: list[dict] = json.load(f)
 
-        
-        for system in agency_known_systems:
-            if system["system_name"].lower() not in disclosed_names:
-                
-                signal_data = {
-                    "agency": agency,
-                    "system_name": system["system_name"],
-                    "signal_type": "disclosure_gap",
-                    "severity": "high",
-                    "description": f"Sistema conocido '{system['system_name']}' no aparece en la declaración oficial.",
-                    "source_urls": [system["source_url"]]
-                }
-                supabase.table("bias_signals").insert(signal_data).execute()
-                signals_created.append(system["system_name"])
+    agency_systems = [s for s in known_systems if s["agency"] == safe_agency]
 
-        return {
-            "status": "success", 
-            "gaps_found": signals_created,
-            "message": f"Se generaron {len(signals_created)} señales de transparencia para {agency}."
-        }
+    disclosed_rows = await database.fetch_all(
+        "SELECT system_name FROM ai_disclosures WHERE agency_name = $1",
+        safe_agency,
+    )
+    disclosed_names = {row["system_name"].lower() for row in disclosed_rows}
 
-    except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+    signals_created: list[str] = []
+
+    for system in agency_systems:
+        urls = system.get("source_urls", [])
+        if not urls:
+            continue
+
+        if system["system_name"].lower() in disclosed_names:
+            continue
+
+        existing = await database.fetch_one(
+            """
+            SELECT id FROM bias_signals
+            WHERE agency = $1 AND system_name = $2 AND signal_type = 'disclosure_gap'
+            """,
+            safe_agency,
+            system["system_name"],
+        )
+        if existing:
+            continue
+
+        try:
+            await database.execute(
+                """
+                INSERT INTO bias_signals
+                  (agency, system_name, signal_type, severity, description, source_urls)
+                VALUES ($1, $2, 'disclosure_gap', 'high', $3, $4)
+                """,
+                safe_agency,
+                system["system_name"],
+                f"Known system '{system['system_name']}' does not appear in the official disclosure.",
+                urls,
+            )
+            signals_created.append(system["system_name"])
+        except HTTPException:
+            raise
+        except Exception:
+            raise HTTPException(status_code=500, detail="Failed to record bias signal.")
+
+    return {
+        "status": "success",
+        "gaps_found": signals_created,
+        "message": f"Generated {len(signals_created)} transparency signal(s) for {safe_agency}.",
+    }
