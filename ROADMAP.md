@@ -16,7 +16,7 @@
 | ✅ | **Beatrice** | Add `CODEOWNERS` | File committed, owners assigned by directory |
 | ✅ | **Beatrice** | Create `.env.example` (backend) and `.env.local.example` (frontend) | All required env var names present, no real values |
 | ✅ | **Saul** | FastAPI skeleton app with health check endpoint | `GET /health` returns `{"status": "ok"}` |
-| ⬜ | **Sonia** | Deploy schema migration to Railway Postgres | All 4 tables created, RLS enabled on `complaints` |
+| ✅ | **Sonia** | Deploy schema migration to Railway Postgres | All 4 tables created, RLS enabled on `complaints` |
 | ✅ | **Beatrice** | Create Cloudflare R2 bucket for PDFs | `disclosure-pdfs` bucket exists, R2 credentials set in Railway |
 | ✅ | **Sonia** | Seed `known_systems.json` with ACS Severe Harm PRM entry | Entry has ≥2 citation URLs |
 | ✅ | **William** | Next.js app scaffolded, connected to API via env var | `npm run dev` starts without errors |
