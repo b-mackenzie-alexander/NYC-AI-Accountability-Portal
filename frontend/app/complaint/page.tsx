@@ -1,10 +1,6 @@
 "use client";
 import React, { useState } from "react";
-
-// TODO: Replace with your actual backend URL from environment variable
-// For local development: http://localhost:8000
-// For production: https://your-backend.railway.app
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
+import { submitComplaint } from "@/lib/api";
 
 export default function ComplaintPage() {
   const [submitted, setSubmitted] = useState(false);
@@ -20,30 +16,18 @@ export default function ComplaintPage() {
     const form = e.currentTarget;
     const data = {
       agency: form.agency.value,
-      system_name: form.system.value, // Changed to match backend schema
-      affected_service: form.service.value, // Changed to match backend schema
-      incident_description: form.description.value, // Changed to match backend schema
+      system_name: form.system.value,
+      affected_service: form.service.value,
+      incident_description: form.description.value,
     };
 
     try {
-      // Call your FastAPI backend endpoint
-      const res = await fetch(`${API_BASE_URL}/complaints`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(data),
-      });
-
-      if (res.ok) {
-        const result = await res.json();
-        setToken(result.token);
-        setSubmitted(true);
-      } else {
-        const errorData = await res.json().catch(() => ({}));
-        setError(errorData.detail || `Failed to submit: ${res.status}`);
-      }
+      const result = await submitComplaint(data);
+      setToken(result.complaint_token);
+      setSubmitted(true);
     } catch (err) {
       console.error("Submission error:", err);
-      setError("Unable to connect to server. Please try again later.");
+      setError(err instanceof Error ? err.message : "Unable to connect to server. Please try again later.");
     } finally {
       setLoading(false);
     }
@@ -71,7 +55,7 @@ export default function ComplaintPage() {
                 </code>
               </div>
               <p className="text-sm text-gray-600">
-                Save this token to check your complaint status at{' '}
+                Save this token to check your complaint status at{" "}
                 <code className="text-xs bg-gray-100 px-1 py-0.5 rounded">/complaint/status</code>
               </p>
               <button
@@ -94,7 +78,7 @@ export default function ComplaintPage() {
                   className="border rounded-lg px-3 py-2 text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                 >
                   <option value="">Select an agency</option>
-                  <option value="ACS">Administration for Children's Services (ACS)</option>
+                  <option value="ACS">Administration for Children&apos;s Services (ACS)</option>
                   <option value="NYPD">NY Police Department (NYPD)</option>
                   <option value="DHS">Department of Homeless Services (DHS)</option>
                   <option value="HRA">Human Resources Administration (HRA)</option>

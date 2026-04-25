@@ -1,21 +1,10 @@
 "use client";
 import React, { useEffect, useState } from "react";
 import Link from "next/link";
-
-// Make sure this is set correctly
-const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || "http://localhost:8000";
-
-type Agency = {
-  id: string;
-  name: string;
-  description?: string;
-  disclosed_systems_count?: number;
-  active_signals_count?: number;
-  highest_severity?: "low" | "medium" | "high" | null;
-};
+import { AgencySummary, getAgencySummaries } from "@/lib/api";
 
 export default function AgenciesPage() {
-  const [agencies, setAgencies] = useState<Agency[]>([]);
+  const [agencies, setAgencies] = useState<AgencySummary[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -29,55 +18,12 @@ export default function AgenciesPage() {
       setLoading(true);
       setError(null);
       
-      // FIXED: Use backticks (`) not quotes (')
-      const response = await fetch(`${API_BASE_URL}/agencies`);
-      
-      if (!response.ok) {
-        throw new Error(`Failed to fetch: ${response.status}`);
-      }
-      
-      const data = await response.json();
-      
-      if (Array.isArray(data)) {
-        setAgencies(data);
-      } else if (data.agencies && Array.isArray(data.agencies)) {
-        setAgencies(data.agencies);
-      } else if (data.data && Array.isArray(data.data)) {
-        setAgencies(data.data);
-      } else {
-        setAgencies([]);
-      }
+      const data = await getAgencySummaries();
+      setAgencies(data);
     } catch (err) {
       console.error("Error fetching agencies:", err);
-      setError("Unable to connect to backend. Make sure the server is running on port 8000");
-      
-      // Fallback to demo data for development
-      setAgencies([
-        { 
-          id: "acs", 
-          name: "Administration for Children's Services (ACS)", 
-          description: "Child welfare and foster care services",
-          disclosed_systems_count: 3,
-          active_signals_count: 4,
-          highest_severity: "high"
-        },
-        { 
-          id: "nypd", 
-          name: "NY Police Department (NYPD)", 
-          description: "Law enforcement and public safety",
-          disclosed_systems_count: 2,
-          active_signals_count: 1,
-          highest_severity: "medium"
-        },
-        { 
-          id: "dhs", 
-          name: "Department of Homeless Services (DHS)", 
-          description: "Homeless shelter and services",
-          disclosed_systems_count: 1,
-          active_signals_count: 0,
-          highest_severity: null
-        },
-      ]);
+      setError(err instanceof Error ? err.message : "Unable to connect to backend.");
+      setAgencies([]);
     } finally {
       setLoading(false);
     }
@@ -173,7 +119,7 @@ export default function AgenciesPage() {
             </div>
           ) : filteredAgencies.length === 0 ? (
             <div className="text-center text-gray-500 py-12">
-              No agencies found matching "{searchTerm}"
+              No agencies found matching &quot;{searchTerm}&quot;
             </div>
           ) : (
             <ul className="divide-y divide-gray-200">
