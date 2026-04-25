@@ -27,5 +27,9 @@
     "tailwindcss": "^4.2.4",
     "typescript": "^5",
     "vitest": "^2.1.9"
+  },
+  "optionalDependencies": {
+    "@next/swc-linux-x64-gnu": "^16.2.4",
+    "lightningcss-linux-x64-gnu": "^1.32.0"
   }
 }
