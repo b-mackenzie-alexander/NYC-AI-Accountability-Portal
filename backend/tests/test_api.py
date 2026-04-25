@@ -176,6 +176,49 @@ async def test_internal_endpoint_rejects_wrong_admin_token():
 
 
 @pytest.mark.asyncio
+async def test_generate_signals_produces_disparity_signal():
+    fixture_records = [
+        {"race_ethnicity": "Black", "count": 600, "outcome_type": "referral", "agency": "ACS"},
+        {"race_ethnicity": "White Non-Hispanic", "count": 200, "outcome_type": "referral", "agency": "ACS"},
+        {"race_ethnicity": "Hispanic", "count": 300, "outcome_type": "referral", "agency": "ACS"},
+    ]
+    fetch_all_mock = AsyncMock(return_value=fixture_records)
+    execute_mock = AsyncMock(return_value="INSERT 0 1")
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
+        patch("app.services.database.fetch_all", fetch_all_mock),
+        patch("app.services.database.execute", execute_mock),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/signals/generate/Administration for Children's Services",
+                headers=ADMIN_HEADERS,
+            )
+    assert response.status_code == 200
+    data = response.json()
+    assert data["status"] == "success"
+    assert data["signals_analyzed"] >= 1
+
+
+@pytest.mark.asyncio
+async def test_generate_signals_no_outcome_data():
+    fetch_all_mock = AsyncMock(return_value=[])
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
+        patch("app.services.database.fetch_all", fetch_all_mock),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post(
+                "/signals/generate/Administration for Children's Services",
+                headers=ADMIN_HEADERS,
+            )
+    assert response.status_code == 200
+    assert response.json()["signals_analyzed"] == 0
+
+
+@pytest.mark.asyncio
 async def test_upload_delegates_to_pipeline_with_admin_token():
     validation = ValidationResult(
         validated_systems=[],
