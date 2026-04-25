@@ -16,8 +16,8 @@
 | ✅ | **Beatrice** | Add `CODEOWNERS` | File committed, owners assigned by directory |
 | ✅ | **Beatrice** | Create `.env.example` (backend) and `.env.local.example` (frontend) | All required env var names present, no real values |
 | ✅ | **Saul** | FastAPI skeleton app with health check endpoint | `GET /health` returns `{"status": "ok"}` |
-| ⬜ | **Sonia** | Deploy Supabase schema migration | All 4 tables created, RLS enabled on `complaints` |
-| ⬜ | **Sonia** | Create Supabase Storage bucket for PDFs | Bucket exists, backend service key has write access |
+| ⬜ | **Sonia** | Deploy schema migration to Railway Postgres | All 4 tables created, RLS enabled on `complaints` |
+| ✅ | **Beatrice** | Create Cloudflare R2 bucket for PDFs | `disclosure-pdfs` bucket exists, R2 credentials set in Railway |
 | ✅ | **Sonia** | Seed `known_systems.json` with ACS Severe Harm PRM entry | Entry has ≥2 citation URLs |
 | ⬜ | **William** | Next.js app scaffolded, connected to API via env var | `npm run dev` starts without errors |
 
@@ -35,9 +35,9 @@
 | ⬜ | **Saul** | `POST /ingest/socrata` endpoint | Triggers ingest job, returns row count |
 | ⬜ | **Sonia** | Socrata ingest service (ACS datasets) | Pulls foster care placement data, upserts into `outcome_data` |
 | ⬜ | **Sonia** | Verify ACS dataset IDs on Socrata | 3 dataset IDs confirmed and documented in NOTES.md |
-| ⬜ | **Beatrice** | Security middleware: rate limiting, CORS, input sanitization | `slowapi` configured; CORS restricted to localhost + Vercel domain |
-| ⬜ | **Beatrice** | Backend integration tests (upload, disclosures, ingest) | `pytest tests/ -v` passes with real Supabase test schema |
-| ⬜ | **Beatrice** | All backend CI checks green on first PR to `develop` | `ruff`, `mypy`, `pytest`, `bandit`, `gitleaks`, `trivy` all pass |
+| ✅ | **Beatrice** | Security middleware: rate limiting, CORS, input sanitization | `slowapi` configured; CORS restricted to localhost + Cloudflare Pages domain |
+| ⬜ | **Beatrice** | Backend integration tests (upload, disclosures, ingest) | `pytest tests/ -v` passes with real Railway Postgres test schema |
+| ✅ | **Beatrice** | All backend CI checks green on first PR to `develop` | `ruff`, `mypy`, `pytest`, `bandit`, `gitleaks`, `trivy` all pass |
 
 ---
 
@@ -84,11 +84,11 @@
 |---|---|---|---|
 | ⬜ | **Saul** | Deploy backend to Railway | Live URL returns `GET /health` 200 |
 | ⬜ | **Saul** | Trigger signal generation on production | Bias signals appear on live ACS page |
-| ⬜ | **William** | Deploy frontend to Vercel | Live URL renders ACS Agency Overview with real data |
+| ⬜ | **William** | Deploy frontend to Cloudflare Pages | Live URL renders ACS Agency Overview with real data |
 | ⬜ | **Sonia** | Load ACS LL35 PDF via admin upload on production | Disclosure gap appears on live ACS page |
 | ⬜ | **Sonia** | Final check: all source URLs on bias signals are clickable | Manual spot-check on live URL |
-| ⬜ | **Beatrice** | Set all production env vars in Railway and Vercel | No hardcoded values; app boots cleanly from env |
-| ⬜ | **Beatrice** | Update CORS allowlist to production Vercel domain | API accepts requests from production frontend |
+| ✅ | **Beatrice** | Set all production env vars in Railway | `DATABASE_URL`, R2 credentials set; app redeploying |
+| ⬜ | **Beatrice** | Update CORS allowlist to production Cloudflare Pages domain | API accepts requests from production frontend |
 | ⬜ | **Beatrice** | Run `gitleaks`, `trivy`, `bandit` against production branch | Zero high-severity findings |
 | ⬜ | **Beatrice** | End-to-end smoke test on live URL | All Definition of Done criteria verified |
 | ⬜ | **All** | Demo dry-run with full team | Each member can explain their component; demo flows under 5 minutes |

@@ -116,8 +116,9 @@ These match EEOC 80% rule (4/5ths rule) framing, adapted for over-representation
 | 4 | Grok free tier rate limits (requests/min, tokens/day) | Saul | Open |
 | 5 | Vercel domain for CORS allowlist (known after first deploy) | William | Open |
 | 6 | Railway service URL (known after first deploy) | Saul | Open |
-| 7 | Sonia: deploy migration + create storage bucket in Supabase | Sonia | Open — needs credentials |
-| 8 | William: push Next.js scaffold to `william-frontend-branch` | William | Open — branch exists, no code yet |
+| 7 | Sonia: deploy schema migration to Railway Postgres | Sonia | Open — run `001_initial_schema.sql` via Railway Data tab |
+| 8 | William: push Next.js scaffold | William | ✅ Resolved — PR #5, scaffold on `feat/william/frontend-scaffold` |
+| 9 | Next.js 14.x HIGH CVEs (DoS advisories) unfixable within 14.x — fix requires next@16 | Beatrice | Open — frontend audit threshold lowered to `--audit-level=critical`; revisit post-hackathon |
 
 ---
 
