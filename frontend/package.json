@@ -1,36 +1,35 @@
 {
-  "name": "nyc-ai-accountability-portal",
+  "name": "frontend",
   "version": "0.1.0",
   "private": true,
   "scripts": {
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
+    "lint": "eslint",
     "type-check": "tsc --noEmit",
     "test": "vitest run"
   },
   "dependencies": {
-    "next": "^15.5.15",
-    "react": "^19.2.5",
-    "react-dom": "^19.2.5"
+    "autoprefixer": "^10.5.0",
+    "next": "^16.2.4",
+    "postcss": "^8.5.10",
+    "react": "19.2.4",
+    "react-dom": "19.2.4"
   },
   "devDependencies": {
-    "@testing-library/react": "^16",
+    "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
-    "@types/react": "^19.2.14",
-    "@types/react-dom": "^19.2.3",
-    "@vitejs/plugin-react": "^4",
-    "autoprefixer": "^10",
-    "eslint": "^8",
-    "eslint-config-next": "^15.5.15",
-    "jsdom": "^25",
-    "postcss": "^8",
-    "tailwindcss": "^3",
+    "@types/react": "^19",
+    "@types/react-dom": "^19",
+    "eslint": "^9",
+    "eslint-config-next": "16.2.4",
+    "tailwindcss": "^4.2.4",
     "typescript": "^5",
-    "vitest": "^2"
+    "vitest": "^2.1.9"
   },
-  "overrides": {
-    "glob": "^11.0.0"
+  "optionalDependencies": {
+    "@next/swc-linux-x64-gnu": "^16.2.4",
+    "lightningcss-linux-x64-gnu": "^1.32.0"
   }
 }
