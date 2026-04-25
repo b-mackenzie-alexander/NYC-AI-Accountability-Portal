@@ -46,12 +46,12 @@
 
 | Status | Owner | Task | Done When |
 |---|---|---|---|
-| ⬜ | **Saul** | Disparity ratio calculation service | Returns signal dicts for ratios ≥ 1.2x with severity classification |
+| ✅ | **Saul** | Disparity ratio calculation service | Returns signal dicts for ratios ≥ 1.2x with severity classification |
 | ✅ | **Saul** | Disclosure gap detection (cross-reference `known_systems.json`) | ACS Severe Harm PRM appears as `disclosure_gap` signal |
 | ✅ | **Saul** | `POST /signals/check-gaps/{agency}` endpoint | Runs gap analysis for an agency, upserts to `bias_signals` |
-| ⬜ | **Saul** | `GET /signals` endpoint with filters | Filters by `agency`, `signal_type`, `severity` |
+| ✅ | **Beatrice** | `GET /signals` endpoint with filters | Filters by `agency`, `signal_type`, `severity` |
 | ✅ | **Saul** | Complaint intake endpoint with HMAC token | `POST /complaints` returns token; no PII stored |
-| ⬜ | **Saul** | Complaint status endpoint | `GET /complaints/{token}` returns status without exposing complaint content |
+| ✅ | **Beatrice** | Complaint status endpoint | `GET /complaints/{token}` returns status without exposing complaint content |
 | ⬜ | **Sonia** | Verify disparity ratios against raw Socrata numbers manually | Spot-check 3 race/ethnicity groups; ratios match hand calculation |
 | ⬜ | **Beatrice** | Analysis pipeline integration tests | Signal generation tested with fixture data |
 
