@@ -52,11 +52,13 @@
 These Socrata dataset IDs need to be confirmed before Sonia starts the ingest service.
 Visit `data.cityofnewyork.us` and search "ACS" to verify current IDs.
 
-| Dataset | Expected ID | Status |
-|---|---|---|
-| Foster care placements by demographic | TBD | [ ] Verified |
-| Child welfare service requests | TBD | [ ] Verified |
-| Preventive services enrollment | TBD | [ ] Verified |
+| Dataset | Dataset ID | Count Column | Status |
+|---|---|---|---|
+| Foster care placements by demographic | `uhvm-6sct` | `article_x_foster_care_entries` | ✅ Verified — FY2024 |
+| Child welfare service requests (referrals) | `uhvm-6sct` | `scr_intakes` | ✅ Verified — FY2024 |
+| Preventive services enrollment | `uhvm-6sct` | `acs_referral_to_prevention` | ✅ Verified — FY2024 |
+
+All three outcome types come from a single dataset (`uhvm-6sct` — NYC LL132 ACS Demographic Report). Race/ethnicity values are in the `sub_category` column (filter `category=Race/Ethnicity&child_parent=Children`). "White non-Hispanic" is present, satisfying the CLAUDE.md reference group requirement.
 
 **Socrata base URL:** `https://data.cityofnewyork.us/resource/{dataset_id}.json`
 **No API key required** for public datasets. Add `$$app_token` header if rate limited.
@@ -110,13 +112,13 @@ These match EEOC 80% rule (4/5ths rule) framing, adapted for over-representation
 
 | # | Question | Owner | Status |
 |---|---|---|---|
-| 1 | Exact Socrata dataset IDs for ACS foster care data | Sonia | Open |
+| 1 | Exact Socrata dataset IDs for ACS foster care data | Sonia | ✅ Resolved — `uhvm-6sct` (LL132 report), 3 entries in `socrata_datasets.json` |
 | 2 | URL for most recent ACS LL35 annual report PDF | Sonia | ✅ Resolved — see Reference Links |
 | 3 | Citation URLs for Severe Harm PRM in `known_systems.json` | Sonia | ✅ Resolved — 5 URLs in `known_systems.json` |
 | 4 | Grok free tier rate limits (requests/min, tokens/day) | Saul | Open |
 | 5 | Vercel domain for CORS allowlist (known after first deploy) | William | Open |
-| 6 | Railway service URL (known after first deploy) | Saul | Open |
-| 7 | Sonia: deploy schema migration to Railway Postgres | Sonia | Open — run `001_initial_schema.sql` via Railway Data tab |
+| 6 | Railway service URL (known after first deploy) | Saul | ✅ Resolved — `https://shuttle.proxy.rlwy.net:12414` |
+| 7 | Sonia: deploy schema migration to Railway Postgres | Sonia | ✅ Resolved — all 4 tables created via asyncpg on 2026-04-25 |
 | 8 | William: push Next.js scaffold | William | ✅ Resolved — PR #5, scaffold on `feat/william/frontend-scaffold` |
 | 9 | Next.js 14.x HIGH CVEs (DoS advisories) unfixable within 14.x — fix requires next@16 | Beatrice | Open — frontend audit threshold lowered to `--audit-level=critical`; revisit post-hackathon |
 
@@ -175,3 +177,5 @@ NEXT_PUBLIC_SUPABASE_ANON_KEY=
 | 2026-04-24 | Beatrice | PR #2 merged — CI fixed: mypy types, python-multipart CVEs, Gitleaks permissions |
 | 2026-04-24 | Beatrice | `develop` is clean and green; `william-frontend-branch` exists but has no code yet |
 | 2026-04-24 | Beatrice | Pivoted from Supabase to Railway Postgres + Cloudflare R2 (ADR-006) — hit Supabase cap |
+| 2026-04-25 | Beatrice | PR #9 merged — Phase 1 complete: GET /disclosures, Socrata multi-dataset ingest (uhvm-6sct), 9 tests green |
+| 2026-04-25 | Beatrice | PR #10 merged — Phase 2 complete: disparity ratio service, GET /signals, POST /signals/generate, GET /complaints/{token} |
