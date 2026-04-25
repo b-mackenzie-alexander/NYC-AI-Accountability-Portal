@@ -1,9 +1,29 @@
 [
   {
     "agency": "Administration for Children's Services",
-    "dataset_id": "7u79-x2u6",
-    "url": "https://data.cityofnewyork.us/resource/7u79-x2u6.json",
+    "dataset_id": "uhvm-6sct",
+    "url": "https://data.cityofnewyork.us/resource/uhvm-6sct.json",
     "outcome_type": "referral",
+    "count_column": "scr_intakes",
+    "report_period": "FY2024",
+    "year": 2024
+  },
+  {
+    "agency": "Administration for Children's Services",
+    "dataset_id": "uhvm-6sct",
+    "url": "https://data.cityofnewyork.us/resource/uhvm-6sct.json",
+    "outcome_type": "placement",
+    "count_column": "article_x_foster_care_entries",
+    "report_period": "FY2024",
+    "year": 2024
+  },
+  {
+    "agency": "Administration for Children's Services",
+    "dataset_id": "uhvm-6sct",
+    "url": "https://data.cityofnewyork.us/resource/uhvm-6sct.json",
+    "outcome_type": "preventive_service",
+    "count_column": "acs_referral_to_prevention",
+    "report_period": "FY2024",
     "year": 2024
   }
 ]

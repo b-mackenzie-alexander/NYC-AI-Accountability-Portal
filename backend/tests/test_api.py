@@ -73,6 +73,59 @@ async def test_ingest_socrata_status():
 
 
 @pytest.mark.asyncio
+async def test_list_disclosures_no_filter():
+    fetch_all_mock = AsyncMock(
+        return_value=[
+            {
+                "id": "abc",
+                "agency_name": "ACS",
+                "system_name": "Test System",
+                "extraction_confidence": 0.9,
+            }
+        ]
+    )
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
+        patch("app.services.database.fetch_all", fetch_all_mock),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/disclosures")
+    assert response.status_code == 200
+    assert isinstance(response.json(), list)
+
+
+@pytest.mark.asyncio
+async def test_list_disclosures_agency_filter():
+    fetch_all_mock = AsyncMock(return_value=[])
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
+        patch("app.services.database.fetch_all", fetch_all_mock),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.get("/disclosures?agency=ACS")
+    assert response.status_code == 200
+    fetch_all_mock.assert_called_once()
+    call_args = fetch_all_mock.call_args
+    assert "ACS" in call_args.args
+
+
+@pytest.mark.asyncio
+async def test_ingest_socrata_502_on_failure():
+    mock_response = MagicMock()
+    mock_response.status_code = 503
+    with (
+        patch("app.services.database.get_pool", new_callable=AsyncMock),
+        patch("app.services.database.close_pool", new_callable=AsyncMock),
+        patch("httpx.AsyncClient.get", AsyncMock(return_value=mock_response)),
+    ):
+        async with AsyncClient(transport=ASGITransport(app=app), base_url="http://test") as client:
+            response = await client.post("/ingest/socrata")
+    assert response.status_code == 502
+
+
+@pytest.mark.asyncio
 async def test_check_gaps():
     fetch_all_mock = AsyncMock(return_value=[])
     fetch_one_mock = AsyncMock(return_value=None)
